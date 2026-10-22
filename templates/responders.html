@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GERIS | Responders</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body class="app-body command-center">
+<div class="app-shell">
+    <header class="top-nav">
+        <div class="nav-brand">
+            <div class="brand-mark">G</div>
+            <div class="brand-copy">
+                <span class="brand-name">GERIS</span>
+                <small>Emergency Operations Center</small>
+            </div>
+        </div>
+        <nav class="main-nav" aria-label="Main navigation">
+            <a href="{{ url_for('dashboard') }}">Overview</a>
+            <a href="{{ url_for('identify') }}">Identification</a>
+            <a href="{{ url_for('emergency') }}">Emergency</a>
+            <a class="active" href="{{ url_for('responders') }}">Responders</a>
+            <a href="{{ url_for('incident_history') }}">History</a>
+        </nav>
+        <div class="nav-actions">
+            <div class="user-pill"><span class="user-indicator"></span>{{ username }}</div>
+            <a class="logout-btn" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+        <header class="page-header">
+            <div class="header-copy">
+                <p class="section-kicker">Response Coordination</p>
+                <h1>Active Emergency Locations</h1>
+                <p class="header-description">View the latest GPS locations shared for open GERIS incidents.</p>
+            </div>
+            <div class="online-badge"><span class="status-dot"></span>Live incident feed</div>
+        </header>
+
+        <section class="card-panel tracking-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-label">Field Teams</p>
+                    <h2>Response Units</h2>
+                </div>
+                <span class="inline-status">Filter by responder type</span>
+            </div>
+
+            <div class="responder-grid" aria-label="Filter responders by type">
+                <button class="responder-card is-selected" type="button" data-responder-filter="all" aria-pressed="true">
+                    <div class="responder-icon" aria-hidden="true">◉</div>
+                    <h3>All Responders</h3>
+                    <p>View registered teams and their current availability.</p>
+                </button>
+                <button class="responder-card" type="button" data-responder-filter="Ambulance" aria-pressed="false">
+                    <div class="responder-icon" aria-hidden="true">🚑</div>
+                    <h3>Ambulance</h3>
+                    <p>Rapid medical transport and emergency triage support for critical patients.</p>
+                </button>
+                <button class="responder-card" type="button" data-responder-filter="Medical" aria-pressed="false">
+                    <div class="responder-icon" aria-hidden="true">🩺</div>
+                    <h3>Doctor</h3>
+                    <p>Clinical assessment, treatment guidance, and on-site medical coordination.</p>
+                </button>
+                <button class="responder-card" type="button" data-responder-filter="Police" aria-pressed="false">
+                    <div class="responder-icon" aria-hidden="true">👮</div>
+                    <h3>Police</h3>
+                    <p>Scene security, crowd management, and incident coordination support.</p>
+                </button>
+                <button class="responder-card" type="button" data-responder-filter="Fire" aria-pressed="false">
+                    <div class="responder-icon" aria-hidden="true">🚒</div>
+                    <h3>Fire</h3>
+                    <p>Fire suppression, rescue support, and hazardous-area response.</p>
+                </button>
+            </div>
+            <section class="responder-directory" aria-labelledby="responderDirectoryTitle">
+                <div class="panel-header responder-directory-header">
+                    <div>
+                        <p class="panel-label">Team contacts</p>
+                        <h3 id="responderDirectoryTitle">Registered responders</h3>
+                    </div>
+                    <span id="responderDirectoryCount" class="inline-status">Loading responders…</span>
+                </div>
+                <p id="responderDistanceContext" class="location-help">Distances are calculated from the nearest active emergency when one is available.</p>
+                <div id="responderDirectoryList" class="responder-directory-list" aria-live="polite"></div>
+                <p id="responderDirectoryMessage" class="empty-incidents" role="status">Loading registered responders…</p>
+            </section>
+            <section class="nearby-responder-search" aria-labelledby="nearbyResponderTitle">
+                <div class="panel-header responder-directory-header">
+                    <div>
+                        <p class="panel-label">Location search</p>
+                        <h3 id="nearbyResponderTitle">Find nearby available responders</h3>
+                    </div>
+                    <button id="findNearbyRespondersButton" class="primary-btn nearby-search-button" type="button">
+                        Find nearby responders
+                    </button>
+                </div>
+                <p id="nearbyResponderLocation" class="location-help">
+                    Uses the active emergency location when one exists; otherwise asks permission for this device's current location.
+                </p>
+                <div id="nearbyResponderList" class="responder-directory-list" aria-live="polite"></div>
+                <p id="nearbyResponderMessage" class="empty-incidents" role="status">
+                    Find nearby responders to see available teams ranked by distance.
+                </p>
+            </section>
+        </section>
+
+        <section class="card-panel tracking-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-label">Live Operations</p>
+                    <h2>Incident Location Map</h2>
+                </div>
+                <span class="inline-status"><span id="responderIncidentCount">{{ active_emergencies|length }}</span> active</span>
+            </div>
+            <div id="responderMap" class="emergency-map responder-map" aria-label="Map of active emergency incidents"></div>
+            <div id="responderIncidentList" class="active-incident-list">
+                {% for incident in active_emergencies %}
+                <article class="active-incident" data-incident-id="{{ incident['id'] }}"
+                         data-latitude="{{ incident['latitude'] }}" data-longitude="{{ incident['longitude'] }}">
+                    <div class="incident-type-icon">!</div>
+                    <div class="active-incident-copy">
+                        <strong>{{ incident["emergency_type"] }}</strong>
+                        <span>{{ incident["person_name"] }} · {{ incident["contact_number"] or "No contact provided" }}</span>
+                    </div>
+                    <div class="active-incident-location">
+                        <span>{{ "%.5f"|format(incident["latitude"]) }}, {{ "%.5f"|format(incident["longitude"]) }}</span>
+                        {% if incident["accuracy"] is not none %}<small>GPS accuracy ±{{ "%.0f"|format(incident["accuracy"]) }} m</small>{% endif %}
+                    </div>
+                    <a class="secondary-btn map-focus-btn" href="https://www.openstreetmap.org/?mlat={{ incident['latitude'] }}&amp;mlon={{ incident['longitude'] }}#map=16/{{ incident['latitude'] }}/{{ incident['longitude'] }}" target="_blank" rel="noopener noreferrer">Open map</a>
+                </article>
+                {% else %}
+                <p class="empty-incidents" id="emptyIncidents">No active incidents are sharing a location right now.</p>
+                {% endfor %}
+            </div>
+            <p class="location-help">Locations refresh while the incident owner's browser is sharing updates. The owner can stop sharing and close an incident from the Emergency page.</p>
+        </section>
+    </main>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/emergency-location.js') }}"></script>
+</body>
+</html>

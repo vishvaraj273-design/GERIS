@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GERIS | Emergency</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body class="app-body command-center">
+<div class="app-shell">
+    <header class="top-nav">
+        <div class="nav-brand">
+            <div class="brand-mark">G</div>
+            <div class="brand-copy">
+                <span class="brand-name">GERIS</span>
+                <small>Emergency Operations Center</small>
+            </div>
+        </div>
+        <nav class="main-nav" aria-label="Main navigation">
+            <a href="{{ url_for('dashboard') }}">Overview</a>
+            <a href="{{ url_for('identify') }}">Identification</a>
+            <a class="active" href="{{ url_for('emergency') }}">Emergency</a>
+            <a href="{{ url_for('responders') }}">Responders</a>
+            <a href="{{ url_for('incident_history') }}">History</a>
+        </nav>
+        <div class="nav-actions">
+            <div class="user-pill"><span class="user-indicator"></span>{{ username }}</div>
+            <a class="logout-btn" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+        <header class="page-header">
+            <div class="header-copy">
+                <p class="section-kicker">Emergency Response</p>
+                <h1>Live Emergency Location</h1>
+                <p class="header-description">Share your current location with the GERIS response team while an incident is active.</p>
+            </div>
+            <div class="online-badge"><span class="status-dot"></span>Location services ready</div>
+        </header>
+
+        <section id="emergencyNotice" class="location-notice" role="status" aria-live="polite"></section>
+
+        <section id="emergencyFormPanel" class="card-panel form-card"{% if active_emergency %} hidden{% endif %}>
+            <div class="panel-header">
+                <div>
+                    <p class="panel-label">Incident Information</p>
+                    <h2>Start emergency tracking</h2>
+                </div>
+            </div>
+            <p class="location-help">For best accuracy, enable device location/GPS and allow browser location permission. GERIS uses the device's actual GPS coordinates and not an approximate IP-based location.</p>
+            <div class="location-preview">
+                <button id="checkLocationButton" class="secondary-btn" type="button">Check my location</button>
+                <p id="currentLocationStatus" role="status" aria-live="polite">Current device location has not been checked.</p>
+            </div>
+            <form id="emergencyForm">
+                <div class="field-grid">
+                    <div class="field-group">
+                        <label for="personName">Person Name</label>
+                        <input type="text" id="personName" maxlength="120" placeholder="Enter person's name" required>
+                    </div>
+                    <div class="field-group">
+                        <label for="phone">Contact Number</label>
+                        <input type="tel" id="phone" maxlength="40" placeholder="Enter contact number" required>
+                    </div>
+                    <div class="field-group">
+                        <label for="emergencyType">Emergency Type</label>
+                        <select id="emergencyType" required>
+                            <option value="">Select Emergency Type</option>
+                            <option value="Cardiac Arrest">Cardiac Arrest</option>
+                            <option value="Fire">Fire</option>
+                            <option value="Accident">Accident</option>
+                            <option value="Medical Emergency">Medical Emergency</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label for="location">Landmark or address (optional)</label>
+                        <input type="text" id="location" maxlength="240" placeholder="Add a nearby landmark">
+                    </div>
+                </div>
+                <div class="field-group textarea-group">
+                    <label for="description">Emergency Description (optional)</label>
+                    <textarea id="description" rows="4" maxlength="2000" placeholder="Describe the emergency..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button id="startTrackingButton" type="submit" class="emergency-btn">Start Emergency &amp; Share Location</button>
+                </div>
+            </form>
+        </section>
+
+        <section id="activeEmergencyPanel" class="card-panel tracking-panel"{% if not active_emergency %} hidden{% endif %}>
+            <div class="panel-header">
+                <div>
+                    <p class="panel-label">Active Incident</p>
+                    <h2 id="trackingTitle">{% if active_emergency %}{{ active_emergency["emergency_type"] }}{% else %}Live location{% endif %}</h2>
+                </div>
+                <span class="live-tag"><span class="live-tag-dot"></span>TRACKING</span>
+            </div>
+            <div id="emergencyMap" class="emergency-map" aria-label="Your live emergency location map"></div>
+            <div class="tracking-meta">
+                <span>Person: <strong id="trackingPerson">{% if active_emergency %}{{ active_emergency["person_name"] }}{% else %}—{% endif %}</strong></span>
+                <span>Last location: <strong id="trackingCoordinates">{% if active_emergency %}{{ "%.5f"|format(active_emergency["latitude"]) }}, {{ "%.5f"|format(active_emergency["longitude"]) }}{% else %}Waiting for GPS…{% endif %}</strong></span>
+                <span>Accuracy: <strong id="trackingAccuracy">{% if active_emergency and active_emergency["accuracy"] is not none %}±{{ "%.0f"|format(active_emergency["accuracy"]) }} m{% else %}Waiting for GPS…{% endif %}</strong></span>
+            </div>
+            <div class="form-actions">
+                <button id="resumeTrackingButton" class="primary-btn" type="button"{% if not active_emergency %} hidden{% endif %}>Resume Location Sharing</button>
+                <button id="stopTrackingButton" class="stop-tracking-btn" type="button">Stop Tracking &amp; Close Incident</button>
+            </div>
+        </section>
+
+        <section id="nearestRespondersPanel" class="card-panel tracking-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-label">Nearby support</p>
+                    <h2>Nearest available responders</h2>
+                </div>
+            </div>
+            <div id="nearestRespondersList" class="nearest-responders-list" aria-live="polite"></div>
+            <p id="nearestRespondersEmpty" class="empty-responders">Start or resume emergency tracking to view nearby responders.</p>
+            <p id="assignmentDispatchStatus" class="location-help" role="status" aria-live="polite"></p>
+            <button
+                id="retryEmergencyDispatch"
+                class="secondary-btn"
+                type="button"
+                {% if not active_emergency %}hidden{% endif %}>
+                Try responder assignment again
+            </button>
+        </section>
+
+        <div id="emergencyPageConfig"
+             data-active-id="{{ active_emergency['id'] if active_emergency else '' }}"
+             data-active-latitude="{{ active_emergency['latitude'] if active_emergency else '' }}"
+             data-active-longitude="{{ active_emergency['longitude'] if active_emergency else '' }}"
+             data-active-person="{{ active_emergency['person_name'] if active_emergency else '' }}"
+             data-active-type="{{ active_emergency['emergency_type'] if active_emergency else '' }}"></div>
+    </main>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/emergency-location.js') }}"></script>
+</body>
+</html>

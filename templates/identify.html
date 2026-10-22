@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GERIS | Identify Person</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="app-body command-center">
+
+<div class="app-shell">
+    <header class="top-nav">
+        <div class="nav-brand">
+            <div class="brand-mark">G</div>
+            <div class="brand-copy">
+                <span class="brand-name">GERIS</span>
+                <small>Emergency Operations Center</small>
+            </div>
+        </div>
+
+        <nav class="main-nav" aria-label="Main navigation">
+            <a href="{{ url_for('dashboard') }}">Overview</a>
+            <a class="active" href="{{ url_for('identify') }}">Identification</a>
+            <a href="{{ url_for('emergency') }}">Emergency</a>
+            <a href="{{ url_for('responders') }}">Responders</a>
+            <a href="{{ url_for('incident_history') }}">History</a>
+        </nav>
+
+        <div class="nav-actions">
+            <button class="icon-button" aria-label="Notifications">🔔</button>
+            <div class="user-pill">
+                <span class="user-indicator"></span>
+                {{ session["username"] }}
+            </div>
+            <a class="logout-btn" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+        <header class="page-header">
+            <div class="header-copy">
+                <p class="section-kicker">IDENTIFICATION CENTER</p>
+                <h1>Identify Person</h1>
+                <p class="header-description">Securely identify a registered person using real-time camera capture.</p>
+            </div>
+            <div class="online-badge">
+                <span class="status-dot"></span>
+                System Online
+            </div>
+        </header>
+
+        <section class="workspace-grid">
+            <div class="camera-panel card-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="panel-label">Live Identification</p>
+                        <h2 id="cameraTitle">Camera Ready</h2>
+                    </div>
+                    <span class="inline-status">Camera Ready</span>
+                </div>
+
+                <div class="camera-stage">
+                    <div class="camera-placeholder" id="cameraIcon">
+                        <div class="camera-large-icon">◉</div>
+                        <strong>Camera Ready</strong>
+                        <small>Start camera to begin identification</small>
+                    </div>
+
+                    <video id="cameraPreview" autoplay playsinline></video>
+                    <img id="capturedImage" alt="Captured Person">
+                    <div class="live-indicator" id="liveIndicator">LIVE</div>
+                </div>
+
+                <div class="camera-actions">
+                    <button id="openCameraBtn" class="primary-btn" type="button">Start Camera</button>
+                    <button id="captureBtn" class="secondary-btn" type="button" style="display:none;">Capture Image</button>
+                </div>
+            </div>
+
+            <aside class="result-panel card-panel">
+                <div class="panel-header result-header">
+                    <div>
+                        <p class="panel-label">Identification Result</p>
+                        <h2>Result</h2>
+                    </div>
+                </div>
+
+                <div class="result-body">
+                    <div class="avatar-ring">
+                        <div class="avatar-placeholder">G</div>
+                    </div>
+
+                    <h3 id="resultTitle">No person identified</h3>
+                    <p id="resultMessage">Capture an image to begin identification.</p>
+
+                    <div class="result-meta">
+                        <div class="meta-row">
+                            <span>Person Name</span>
+                            <strong id="resultName">—</strong>
+                        </div>
+                        <div class="meta-row">
+                            <span>Registration ID</span>
+                            <strong id="resultPersonId">—</strong>
+                        </div>
+                        <div class="meta-row">
+                            <span>Phone Number</span>
+                            <strong id="resultPhone">—</strong>
+                        </div>
+                        <div class="meta-row">
+                            <span>Emergency Contact</span>
+                            <strong id="resultEmergencyContact">—</strong>
+                        </div>
+                        <div class="meta-row">
+                            <span>Similarity</span>
+                            <strong id="resultConfidence">—</strong>
+                        </div>
+                        <div class="meta-row">
+                            <span>Status</span>
+                            <strong id="resultStatus">Pending</strong>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="system-strip">
+            <div class="status-chip">
+                <span class="status-dot cyan"></span>
+                <div>
+                    <label>Camera</label>
+                    <strong>Connected</strong>
+                </div>
+            </div>
+            <div class="status-chip">
+                <span class="status-dot blue"></span>
+                <div>
+                    <label>Database</label>
+                    <strong>{{ registered_persons }} Registered</strong>
+                </div>
+            </div>
+            <div class="status-chip">
+                <span class="status-dot green"></span>
+                <div>
+                    <label>Recognition Engine</label>
+                    <strong>Ready</strong>
+                </div>
+            </div>
+            <div class="status-chip">
+                <span class="status-dot orange"></span>
+                <div>
+                    <label>System</label>
+                    <strong>Online</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="activity-panel card-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-label">Monitoring</p>
+                    <h2>Recent Identification Activity</h2>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Person</th>
+                            <th>Identification Status</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for identification in recent_identifications %}
+                        <tr>
+                            <td>{{ identification["person_name"] }}</td>
+                            <td><span class="archive-status verified-status">Verified</span></td>
+                            <td>{{ identification["identified_at"][:10] if identification["identified_at"] else "—" }}</td>
+                            <td>{{ identification["identified_at"][11:19] if identification["identified_at"] and identification["identified_at"]|length > 10 else "—" }}</td>
+                            <td>Face match</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="empty-row">No identification records yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="quick-action">
+            <div class="quick-action-content">
+                <div>
+                    <p class="panel-label">Emergency Response</p>
+                    <h3>Need emergency assistance?</h3>
+                </div>
+                <p>Create an emergency incident and notify the appropriate response team.</p>
+            </div>
+            <a class="emergency-btn" href="{{ url_for('emergency') }}">Start Emergency Response</a>
+        </section>
+    </main>
+</div>
+
+<script>
+    const openCameraBtn = document.getElementById("openCameraBtn");
+    const captureBtn = document.getElementById("captureBtn");
+    const cameraPreview = document.getElementById("cameraPreview");
+    const capturedImage = document.getElementById("capturedImage");
+    const cameraIcon = document.getElementById("cameraIcon");
+    const cameraTitle = document.getElementById("cameraTitle");
+    const liveIndicator = document.getElementById("liveIndicator");
+    const resultTitle = document.getElementById("resultTitle");
+    const resultMessage = document.getElementById("resultMessage");
+    const resultName = document.getElementById("resultName");
+    const resultPersonId = document.getElementById("resultPersonId");
+    const resultPhone = document.getElementById("resultPhone");
+    const resultEmergencyContact = document.getElementById("resultEmergencyContact");
+    const resultConfidence = document.getElementById("resultConfidence");
+    const resultStatus = document.getElementById("resultStatus");
+
+    let cameraStream = null;
+
+    function showRecognitionResult(result) {
+        if (result.identified) {
+            resultTitle.textContent = "Identified";
+            resultMessage.textContent = "Registered person matched successfully.";
+            resultName.textContent = result.name || "—";
+            resultPersonId.textContent = result.person_id ?? "—";
+            resultPhone.textContent = result.phone || "—";
+            resultEmergencyContact.textContent = result.emergency_contact || "—";
+            resultConfidence.textContent = `${result.confidence}%`;
+            resultStatus.textContent = "Verified";
+            return;
+        }
+
+        resultTitle.textContent = result.face_detected === false
+            ? "No face detected"
+            : "No person identified";
+        resultMessage.textContent = result.message
+            || "No registered person matched this face.";
+        resultName.textContent = "—";
+        resultPersonId.textContent = "—";
+        resultPhone.textContent = "—";
+        resultEmergencyContact.textContent = "—";
+        resultConfidence.textContent = result.similarity == null
+            ? "—"
+            : `${(result.similarity * 100).toFixed(2)}%`;
+        resultStatus.textContent = "Not Identified";
+    }
+
+    openCameraBtn.addEventListener("click", async function () {
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false
+            });
+
+            cameraPreview.srcObject = cameraStream;
+            cameraPreview.style.display = "block";
+            cameraIcon.style.display = "none";
+            liveIndicator.style.display = "inline-flex";
+            cameraTitle.textContent = "Camera Active";
+            openCameraBtn.textContent = "Camera Running";
+            captureBtn.style.display = "inline-flex";
+        } catch (error) {
+            console.error("Camera error:", error);
+            alert("Unable to access the camera. Please allow camera permission in your browser.");
+        }
+    });
+
+    captureBtn.addEventListener("click", async function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = cameraPreview.videoWidth;
+        canvas.height = cameraPreview.videoHeight;
+
+        const context = canvas.getContext("2d");
+        context.drawImage(cameraPreview, 0, 0, canvas.width, canvas.height);
+
+        const imageData = canvas.toDataURL("image/jpeg");
+        capturedImage.src = imageData;
+        capturedImage.style.display = "block";
+
+        try {
+            const saveResponse = await fetch("/save-capture", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: imageData })
+            });
+            const saveResult = await saveResponse.json();
+            if (!saveResponse.ok || !saveResult.success) {
+                throw new Error(saveResult.message || "Image capture could not be saved.");
+            }
+
+            const response = await fetch("/recognize-face", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: imageData })
+            });
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || "Face recognition failed.");
+            }
+
+            showRecognitionResult(result);
+        } catch (error) {
+            console.error("Recognition error:", error);
+            showRecognitionResult({
+                identified: false,
+                message: error.message || "Face recognition failed."
+            });
+        }
+    });
+</script>
+</body>
+</html>
+
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GERIS | Register</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-page auth-page">
+<main class="auth-shell">
+    <section class="auth-visual">
+        <div class="auth-panel-glow"></div>
+        <div class="auth-brand">
+            <div class="brand-mark">G</div>
+            <div>
+                <span class="brand-name">GERIS</span>
+                <small>Global Emergency Response &amp; Identification System</small>
+            </div>
+        </div>
+
+        <div class="auth-copy">
+            <p class="eyebrow">Secure Access</p>
+            <h1>Register Authorized Personnel</h1>
+            <p>Create a secure account to operate the emergency response system and manage identification workflows.</p>
+        </div>
+
+        <div class="auth-points">
+            <div class="auth-point">
+                <span class="point-dot"></span>
+                Identity Verification
+            </div>
+            <div class="auth-point">
+                <span class="point-dot"></span>
+                Emergency Coordination
+            </div>
+            <div class="auth-point">
+                <span class="point-dot"></span>
+                Response Monitoring
+            </div>
+        </div>
+    </section>
+
+    <section class="auth-card">
+        <div class="auth-header">
+            <p class="eyebrow">GERIS ACCOUNT</p>
+            <h2>Create Account</h2>
+            <p class="subtitle">Register an authorized GERIS user.</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            <div class="alert {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+
+        <form method="post" class="form auth-form">
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" placeholder="Choose a username" required>
+
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" placeholder="Create a password" required>
+
+            <label for="confirm_password">Confirm Password</label>
+            <input id="confirm_password" name="confirm_password" type="password" placeholder="Re-enter password" required>
+
+            <button class="primary-btn" type="submit">Create Account</button>
+        </form>
+
+        <p class="register-line">
+            Already registered? <a href="{{ url_for('login') }}">Back to sign in</a>
+        </p>
+    </section>
+</main>
+</body>
+</html>

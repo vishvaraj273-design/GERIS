@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#071A2B">
+    <title>GERIS | Responder Sign In</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-page responder-auth-page">
+<main class="login-card responder-auth-card">
+    <div class="brand-mark">G</div>
+    <p class="eyebrow">RESPONDER ACCESS</p>
+    <h1>Responder sign in</h1>
+    <p class="subtitle">Sign in to view your GERIS responder dashboard.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert {{ category }}" role="alert">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="post" class="form" autocomplete="on">
+        <label for="username">Responder name or existing login ID</label>
+        <input id="username" name="username" type="text" autocomplete="username"
+               autocapitalize="words" required>
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password"
+               autocomplete="current-password" required>
+
+        <button class="primary-btn responder-sign-in-button" type="submit">Sign In</button>
+    </form>
+
+    <p class="register-line">
+        New responder?
+        <a href="{{ url_for('responder_register') }}">Register for responder access</a>
+    </p>
+    <p class="register-line">
+        <a href="{{ url_for('login') }}">Return to GERIS user sign in</a>
+    </p>
+</main>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#071A2B">
+    <title>GERIS | Responder Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="app-body command-center responder-panel-body">
+<div class="app-shell">
+    <header class="top-nav responder-panel-nav">
+        <a class="nav-brand" href="{{ url_for('responder_dashboard') }}">
+            <span class="brand-mark small">G</span>
+            <span class="brand-copy">
+                <span class="brand-name">GERIS</span>
+                <small>Responder Panel</small>
+            </span>
+        </a>
+        <div class="nav-actions">
+            <span class="user-pill"><span class="user-indicator"></span>{{ username }}</span>
+            <a class="logout-btn" href="{{ url_for('responder_logout') }}">Sign out</a>
+        </div>
+    </header>
+
+    <main class="dashboard-main responder-dashboard-main">
+        <header class="page-header">
+            <div class="header-copy">
+                <p class="section-kicker">Responder workspace</p>
+                <h1>Welcome, {{ responder["name"] }}</h1>
+                <p class="header-description">Review your responder profile and current availability.</p>
+            </div>
+            <span class="online-badge"><span class="status-dot"></span>Responder account</span>
+        </header>
+
+        <section class="responder-profile-card" aria-labelledby="responderProfileTitle">
+            <div class="responder-profile-heading">
+                <span class="responder-profile-icon" aria-hidden="true">＋</span>
+                <div>
+                    <p class="panel-label">Your profile</p>
+                    <h2 id="responderProfileTitle">{{ responder["name"] }}</h2>
+                </div>
+            </div>
+            <dl class="responder-profile-details">
+                <div>
+                    <dt>Service type</dt>
+                    <dd>{{ responder["responder_type"] }}</dd>
+                </div>
+                <div>
+                    <dt>Availability</dt>
+                    <dd>
+                        <span class="responder-status status-{{ responder['availability_status']|lower }}">
+                            {{ responder["availability_status"] }}
+                        </span>
+                    </dd>
+                </div>
+                <div>
+                    <dt>Contact number</dt>
+                    <dd>{{ responder["phone"] }}</dd>
+                </div>
+                <div>
+                    <dt>Location freshness</dt>
+                    <dd id="responderLocationFreshness">
+                        {% if location_is_fresh %}
+                            Fresh (under 5 minutes)
+                        {% elif responder["location_updated_at"] %}
+                            Stale — refresh required
+                        {% else %}
+                            Location has not been refreshed
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+            <div class="responder-location-refresh">
+                <button id="refreshResponderLocation" class="secondary-btn" type="button">
+                    Refresh my location
+                </button>
+                <p id="responderLocationMessage" role="status" aria-live="polite">
+                    Automatic dispatch uses a location refreshed within the last 5 minutes.
+                </p>
+            </div>
+        </section>
+
+        <section class="card-panel responder-assignment-panel" aria-labelledby="assignmentsTitle">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-label">Dispatch</p>
+                    <h2 id="assignmentsTitle">My assignments</h2>
+                </div>
+                <span class="inline-status">
+                    {{ assignments|length }} assignment{% if assignments|length != 1 %}s{% endif %}
+                </span>
+            </div>
+            {% if assignments %}
+                <div class="responder-assignment-list">
+                    {% for assignment in assignments %}
+                        <article class="responder-incident-card" data-assignment-id="{{ assignment['id'] }}">
+                            <div class="responder-incident-heading">
+                                <div>
+                                    <p class="panel-label">Emergency #{{ assignment["emergency_id"] }}</p>
+                                    <h3>{{ assignment["emergency_type"] }}</h3>
+                                </div>
+                                <span class="responder-status status-{{ assignment['status']|lower|replace(' ', '-') }}">
+                                    {{ assignment["status"] }}
+                                </span>
+                            </div>
+                            <dl class="responder-incident-details">
+                                <div>
+                                    <dt>Emergency created</dt>
+                                    <dd>{{ assignment["emergency_created_at"] }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Emergency status</dt>
+                                    <dd>{{ assignment["emergency_status"] }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Assigned</dt>
+                                    <dd>{{ assignment["assigned_at"] }}</dd>
+                                </div>
+                                {% if assignment["map_url"] %}
+                                    <div>
+                                        <dt>Incident location</dt>
+                                        <dd><a href="{{ assignment['map_url'] }}" target="_blank" rel="noopener noreferrer">Open map / directions</a></dd>
+                                    </div>
+                                {% else %}
+                                    <div>
+                                        <dt>Incident location</dt>
+                                        <dd>Valid coordinates unavailable</dd>
+                                    </div>
+                                {% endif %}
+                            </dl>
+                            {% if assignment["next_statuses"] %}
+                                <div class="responder-incident-actions">
+                                    {% for next_status in assignment["next_statuses"] %}
+                                        <button
+                                            class="primary-btn responder-assignment-action"
+                                            type="button"
+                                            data-assignment-id="{{ assignment['id'] }}"
+                                            data-next-status="{{ next_status }}">
+                                            {{ next_status }}
+                                        </button>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="responder-assignment-empty" role="status" aria-live="polite">
+                <span class="responder-empty-icon" aria-hidden="true">✓</span>
+                    <h3>No assignments yet</h3>
+                    <p>No emergency assignments are currently recorded for this responder.</p>
+                </div>
+            {% endif %}
+        </section>
+    </main>
+</div>
+<script src="{{ url_for('static', filename='js/responder-dashboard.js') }}"></script>
+</body>
+</html>

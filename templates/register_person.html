@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GERIS | Register Person</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="app-body command-center">
+<div class="app-shell">
+    <header class="top-nav">
+        <a class="nav-brand" href="{{ url_for('dashboard') }}">
+            <div class="brand-mark">G</div>
+            <div class="brand-copy">
+                <span class="brand-name">GERIS</span>
+                <small>Emergency Operations Center</small>
+            </div>
+        </a>
+        <nav class="main-nav" aria-label="Main navigation">
+            <a href="{{ url_for('dashboard') }}">Overview</a>
+            <a class="active" href="{{ url_for('register_person') }}">Register Person</a>
+            <a href="{{ url_for('identify') }}">Identification</a>
+            <a href="{{ url_for('emergency') }}">Emergency</a>
+            <a href="{{ url_for('responders') }}">Responders</a>
+            <a href="{{ url_for('incident_history') }}">History</a>
+        </nav>
+        <div class="nav-actions">
+            <button class="icon-button" type="button" aria-label="Notifications">🔔</button>
+            <div class="user-pill"><span class="user-indicator"></span>{{ username }}</div>
+            <a class="logout-btn" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+        <header class="page-header">
+            <div class="header-copy">
+                <p class="section-kicker">Person Management</p>
+                <h1>Register Person</h1>
+                <p class="header-description">Register a person's details and face image for future identification.</p>
+            </div>
+            <div class="online-badge">
+                <span class="status-dot blue"></span>
+                Enrollment Ready
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-container">
+                    {% for category, message in messages %}
+                        <div class="alert {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="enrollment-flow" aria-label="Person enrollment steps">
+            <div class="enrollment-step">
+                <span class="enrollment-step-number">01</span>
+                <span><strong>Person details</strong><small>Name and contact information</small></span>
+            </div>
+            <span class="enrollment-connector" aria-hidden="true"></span>
+            <div class="enrollment-step">
+                <span class="enrollment-step-number">02</span>
+                <span><strong>Face sample</strong><small>Capture a clear face image</small></span>
+            </div>
+            <span class="enrollment-connector" aria-hidden="true"></span>
+            <div class="enrollment-step">
+                <span class="enrollment-step-number">03</span>
+                <span><strong>Save profile</strong><small>Submit details and face sample</small></span>
+            </div>
+        </section>
+
+        <section class="card-panel form-card">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-label">Personal Details</p>
+                    <h2>Person Information</h2>
+                </div>
+            </div>
+
+            <form method="POST"
+                  action="{{ url_for('register_person') }}"
+                  class="register-person-form">
+                <div class="field-grid">
+                    <div class="field-group full-width">
+                        <label for="name">Full Name</label>
+                        <input id="name" type="text" name="name" placeholder="Enter full name" required>
+                    </div>
+                    <div class="field-group full-width">
+                        <label for="phone">Phone Number</label>
+                        <input id="phone" type="tel" name="phone" placeholder="Enter phone number" required>
+                    </div>
+                    <div class="field-group full-width">
+                        <label for="emergency_contact">Emergency Contact</label>
+                        <input id="emergency_contact" type="tel" name="emergency_contact" placeholder="Enter emergency contact">
+                    </div>
+                </div>
+
+                <div class="camera-box">
+                    <h3>Capture Face Image</h3>
+                    <p>Position the person's face clearly inside the camera.</p>
+                    <video id="registerCamera" autoplay playsinline></video>
+                    <img id="registerCapturedImage" alt="Captured Face">
+                    <div class="brand-mark" id="registerCameraIcon">G</div>
+                    <div class="camera-actions">
+                        <button type="button" id="startRegisterCamera" class="primary-btn">Open Camera</button>
+                        <button type="button" id="captureRegisterFace" class="secondary-btn" style="display:none;">Capture Face</button>
+                    </div>
+                </div>
+
+                <input type="hidden" name="face_image" id="faceImageData">
+                <div class="form-actions">
+                    <button type="submit" id="registerPersonBtn" class="primary-btn">Register Person</button>
+                </div>
+            </form>
+        </section>
+    </main>
+</div>
+
+<script>
+    const startRegisterCamera = document.getElementById("startRegisterCamera");
+    const captureRegisterFace = document.getElementById("captureRegisterFace");
+    const registerCamera = document.getElementById("registerCamera");
+    const registerCapturedImage = document.getElementById("registerCapturedImage");
+    const registerCameraIcon = document.getElementById("registerCameraIcon");
+    const faceImageData = document.getElementById("faceImageData");
+    let registerCameraStream = null;
+
+    startRegisterCamera.addEventListener("click", async function () {
+        try {
+            registerCameraStream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false
+            });
+            registerCamera.srcObject = registerCameraStream;
+            registerCamera.style.display = "block";
+            registerCameraIcon.style.display = "none";
+            startRegisterCamera.textContent = "Camera Running";
+            captureRegisterFace.style.display = "inline-flex";
+        } catch (error) {
+            console.error("Camera error:", error);
+            alert("Unable to access the camera. Please allow camera permission.");
+        }
+    });
+
+    captureRegisterFace.addEventListener("click", function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = registerCamera.videoWidth;
+        canvas.height = registerCamera.videoHeight;
+        const context = canvas.getContext("2d");
+        context.drawImage(registerCamera, 0, 0, canvas.width, canvas.height);
+
+        const imageData = canvas.toDataURL("image/jpeg");
+        registerCapturedImage.src = imageData;
+        registerCapturedImage.style.display = "block";
+        faceImageData.value = imageData;
+        alert("Face image captured successfully!");
+    });
+</script>
+</body>
+</html>

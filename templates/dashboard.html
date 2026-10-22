@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GERIS | Command Center</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body class="app-body command-center">
+<div class="app-shell">
+    <header class="top-nav">
+        <a class="nav-brand" href="{{ url_for('dashboard') }}" aria-label="GERIS command center">
+            <div class="brand-mark">G</div>
+            <div class="brand-copy">
+                <span class="brand-name">GERIS</span>
+                <small>Emergency Operations Center</small>
+            </div>
+        </a>
+        <nav class="main-nav" aria-label="Main navigation">
+            <a class="active" href="{{ url_for('dashboard') }}">Overview</a>
+            <a href="{{ url_for('identify') }}">Identification</a>
+            <a href="{{ url_for('emergency') }}">Emergency</a>
+            <a href="{{ url_for('responders') }}">Responders</a>
+            <a href="{{ url_for('incident_history') }}">History</a>
+        </nav>
+        <div class="nav-actions">
+            <span class="command-system-state"><span class="status-dot"></span>System online</span>
+            <div class="user-pill"><span class="user-indicator"></span>{{ username }}</div>
+            <a class="logout-btn" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </header>
+
+    <main class="dashboard-main command-main">
+        <header class="command-page-heading">
+            <div>
+                <p class="section-kicker">GERIS / OPERATIONS</p>
+                <h1>Command Center</h1>
+                <p class="header-description">Real-time emergency identification and response overview.</p>
+            </div>
+            <div class="online-badge"><span class="status-dot"></span>System operational</div>
+        </header>
+
+        <section class="live-status-strip" aria-label="Live system status">
+            <article class="live-status-item">
+                <span class="live-status-icon incident-icon">!</span>
+                <div><span>Active incidents</span><strong id="dashboardIncidentCount">{{ active_emergency_count }}</strong></div>
+            </article>
+            <article class="live-status-item">
+                <span class="live-status-icon people-icon">ID</span>
+                <div><span>Registered people</span><strong>{{ registered_persons }}</strong></div>
+            </article>
+            <article class="live-status-item">
+                <span class="live-status-icon identify-icon">◎</span>
+                <div><span>Identification events</span><strong>{{ identification_count }}</strong></div>
+            </article>
+            <article class="live-status-item">
+                <span class="live-status-icon gps-icon">⌖</span>
+                <div>
+                    <span>GPS tracking</span>
+                    <strong class="status-value">
+                        <i class="status-dot {{ 'green' if active_tracking_count else 'orange' }}"></i>
+                        {{ 'Live' if active_tracking_count else 'Awaiting consent' }}
+                    </strong>
+                </div>
+            </article>
+        </section>
+
+        <section class="command-workspace" aria-label="Command workspace">
+            <article class="card-panel active-command-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="panel-label">Live Operations</p>
+                        <h2>Active Incidents</h2>
+                    </div>
+                    <a class="text-link" href="{{ url_for('incident_history') }}">Incident archive <span aria-hidden="true">→</span></a>
+                </div>
+                <div id="dashboardEmergencyMap" class="emergency-map dashboard-emergency-map" aria-label="Map showing active emergency locations"></div>
+                <div id="dashboardIncidentList" class="active-incident-list">
+                    {% for incident in active_emergencies %}
+                    <article class="active-incident command-incident" data-incident-id="{{ incident['id'] }}"
+                             data-latitude="{{ incident['latitude'] }}" data-longitude="{{ incident['longitude'] }}">
+                        <div class="incident-type-icon" aria-hidden="true">!</div>
+                        <div class="active-incident-copy">
+                            <strong>{{ incident["emergency_type"] }}</strong>
+                            <span>{{ incident["person_name"] }}{% if incident["contact_number"] %} · {{ incident["contact_number"] }}{% endif %}</span>
+                        </div>
+                        <div class="active-incident-location">
+                            <span>{{ "%.5f"|format(incident["latitude"]) }}, {{ "%.5f"|format(incident["longitude"]) }}</span>
+                            {% if incident["accuracy"] is not none %}<small>GPS accuracy ±{{ "%.0f"|format(incident["accuracy"]) }} m</small>{% endif %}
+                        </div>
+                    </article>
+                    {% else %}
+                    <p class="empty-incidents" id="dashboardEmptyIncidents">No active emergencies. New incidents will appear here when location sharing starts.</p>
+                    {% endfor %}
+                </div>
+            </article>
+
+            <aside class="card-panel quick-response-panel">
+                <div class="panel-header">
+                    <div>
+                        <p class="panel-label">Command Workspace</p>
+                        <h2>Quick Response</h2>
+                    </div>
+                </div>
+                <div class="command-action-list">
+                    <a class="command-action" href="{{ url_for('identify') }}">
+                        <span class="command-action-icon identify-icon" aria-hidden="true">◎</span>
+                        <span><strong>Identify person</strong><small>Run biometric identification</small></span>
+                        <span class="command-action-arrow" aria-hidden="true">→</span>
+                    </a>
+                    <a class="command-action" href="{{ url_for('emergency') }}">
+                        <span class="command-action-icon emergency-icon" aria-hidden="true">!</span>
+                        <span><strong>Start emergency</strong><small>Create incident and share GPS</small></span>
+                        <span class="command-action-arrow" aria-hidden="true">→</span>
+                    </a>
+                    <a class="command-action" href="{{ url_for('register_person') }}">
+                        <span class="command-action-icon people-icon" aria-hidden="true">＋</span>
+                        <span><strong>Register person</strong><small>Add details and face sample</small></span>
+                        <span class="command-action-arrow" aria-hidden="true">→</span>
+                    </a>
+                    <a class="command-action" href="{{ url_for('responders') }}">
+                        <span class="command-action-icon responder-icon" aria-hidden="true">⌖</span>
+                        <span><strong>View response map</strong><small>Monitor active incident locations</small></span>
+                        <span class="command-action-arrow" aria-hidden="true">→</span>
+                    </a>
+                </div>
+                <div class="last-identification">
+                    <span class="status-dot cyan"></span>
+                    <span>Last identified</span>
+                    <strong>{{ last_identified_person }}</strong>
+                </div>
+            </aside>
+        </section>
+
+        <section class="card-panel command-timeline-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-label">System Activity</p>
+                    <h2>Recent Activity</h2>
+                </div>
+                <a class="text-link" href="{{ url_for('incident_history') }}">View history <span aria-hidden="true">→</span></a>
+            </div>
+            {% if activity_events %}
+            <ol class="command-timeline">
+                {% for event in activity_events %}
+                <li class="timeline-event {{ 'timeline-emergency' if event['event_type'] == 'emergency' else 'timeline-identification' }}">
+                    <span class="timeline-marker" aria-hidden="true">{{ '!' if event['event_type'] == 'emergency' else '◎' }}</span>
+                    <div class="timeline-event-copy">
+                        <strong>{{ event["title"] }}</strong>
+                        <span>
+                            {% if event["event_type"] == "emergency" %}
+                                {{ event["subject"] }} · {{ event["status"]|title }}
+                                {% if event["location"] %} · {{ event["location"] }}{% endif %}
+                            {% else %}
+                                {{ event["subject"] }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <time class="timeline-time">{{ event["event_at"] }}</time>
+                </li>
+                {% endfor %}
+            </ol>
+            {% else %}
+            <p class="timeline-empty">No recent activity is recorded yet. Identification and emergency events will appear here.</p>
+            {% endif %}
+        </section>
+
+        <section class="emergency-operations-banner">
+            <div class="operations-banner-mark" aria-hidden="true">!</div>
+            <div>
+                <p class="panel-label">Emergency Operations</p>
+                <h2>Need to coordinate a response?</h2>
+                <p>Create an incident and share a live location with the GERIS operations view.</p>
+            </div>
+            <a class="emergency-btn" href="{{ url_for('emergency') }}">Start Emergency Response <span aria-hidden="true">→</span></a>
+        </section>
+    </main>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/emergency-location.js') }}"></script>
+</body>
+</html>

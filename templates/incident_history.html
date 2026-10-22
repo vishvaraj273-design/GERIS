@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GERIS | Incident Archive</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="app-body command-center">
+<div class="app-shell">
+    <header class="top-nav">
+        <a class="nav-brand" href="{{ url_for('dashboard') }}">
+            <div class="brand-mark">G</div>
+            <div class="brand-copy">
+                <span class="brand-name">GERIS</span>
+                <small>Emergency Operations Center</small>
+            </div>
+        </a>
+        <nav class="main-nav" aria-label="Main navigation">
+            <a href="{{ url_for('dashboard') }}">Overview</a>
+            <a href="{{ url_for('identify') }}">Identification</a>
+            <a href="{{ url_for('emergency') }}">Emergency</a>
+            <a href="{{ url_for('responders') }}">Responders</a>
+            <a class="active" href="{{ url_for('incident_history') }}">History</a>
+        </nav>
+        <div class="nav-actions">
+            <div class="user-pill"><span class="user-indicator"></span>{{ username }}</div>
+            <a class="logout-btn" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </header>
+
+    <main class="dashboard-main archive-main">
+        <header class="page-header">
+            <div class="header-copy">
+                <p class="section-kicker">GERIS / RECORDS</p>
+                <h1>Incident Archive</h1>
+                <p class="header-description">Review emergency records saved in the GERIS incident database.</p>
+            </div>
+            <div class="online-badge"><span class="status-dot blue"></span>{{ emergencies|length }} recorded</div>
+        </header>
+
+        <section class="card-panel archive-panel">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-label">Response Records</p>
+                    <h2>Emergency History</h2>
+                </div>
+                <a class="secondary-btn archive-create-btn" href="{{ url_for('emergency') }}">Create emergency</a>
+            </div>
+
+            {% if emergencies %}
+            <div class="archive-toolbar" role="search" aria-label="Filter incident records">
+                <label class="archive-search">
+                    <span>Search records</span>
+                    <input id="incidentSearch" type="search" placeholder="Search person, location or incident ID">
+                </label>
+                <label>
+                    <span>Emergency type</span>
+                    <select id="incidentTypeFilter">
+                        <option value="">All types</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Status</span>
+                    <select id="incidentStatusFilter">
+                        <option value="">All statuses</option>
+                        <option value="active">Active</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Date</span>
+                    <input id="incidentDateFilter" type="date">
+                </label>
+            </div>
+
+            <div class="table-wrap archive-table-wrap">
+                <table class="archive-table">
+                    <thead>
+                        <tr>
+                            <th>Incident ID</th>
+                            <th>Emergency</th>
+                            <th>Person</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Date / Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="incidentTableBody">
+                        {% for emergency in emergencies %}
+                        {% set incident_status = emergency["status"]|default("closed", true)|lower %}
+                        <tr class="archive-row"
+                            data-id="{{ emergency['id'] }}"
+                            data-type="{{ emergency['emergency_type']|lower }}"
+                            data-status="{{ incident_status }}"
+                            data-date="{{ emergency['created_at'][:10] if emergency['created_at'] else '' }}"
+                            data-search="{{ emergency['id'] }} {{ emergency['emergency_type'] }} {{ emergency['person_name'] }} {{ emergency['location'] or '' }}">
+                            <td><span class="incident-id">#{{ emergency["id"] }}</span></td>
+                            <td><strong>{{ emergency["emergency_type"] }}</strong></td>
+                            <td>{{ emergency["person_name"] }}</td>
+                            <td>{{ emergency["location"] or "Location not provided" }}</td>
+                            <td><span class="archive-status {{ 'active-status' if incident_status == 'active' else 'closed-status' }}">{{ incident_status|title }}</span></td>
+                            <td>{{ emergency["created_at"] or "—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <p class="archive-no-results" id="incidentNoResults" hidden>No incidents match these filters.</p>
+            </div>
+            {% else %}
+            <div class="archive-empty-state">
+                <span class="archive-empty-icon" aria-hidden="true">▤</span>
+                <h3>No incidents found</h3>
+                <p>Recorded emergencies will appear here.</p>
+                <a class="secondary-btn" href="{{ url_for('emergency') }}">Start an emergency response</a>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+</div>
+{% if emergencies %}
+<script>
+    (function () {
+        const rows = Array.from(document.querySelectorAll(".archive-row"));
+        const typeFilter = document.getElementById("incidentTypeFilter");
+        const statusFilter = document.getElementById("incidentStatusFilter");
+        const dateFilter = document.getElementById("incidentDateFilter");
+        const search = document.getElementById("incidentSearch");
+        const noResults = document.getElementById("incidentNoResults");
+
+        Array.from(new Set(rows.map(function (row) {
+            return row.dataset.type;
+        }))).sort().forEach(function (type) {
+            const option = document.createElement("option");
+            option.value = type;
+            option.textContent = type.replace(/\b\w/g, function (letter) {
+                return letter.toUpperCase();
+            });
+            typeFilter.appendChild(option);
+        });
+
+        function applyFilters() {
+            const query = search.value.trim().toLowerCase();
+            let visibleCount = 0;
+            rows.forEach(function (row) {
+                const visible =
+                    (!query || row.dataset.search.toLowerCase().includes(query)) &&
+                    (!typeFilter.value || row.dataset.type === typeFilter.value) &&
+                    (!statusFilter.value || row.dataset.status === statusFilter.value) &&
+                    (!dateFilter.value || row.dataset.date === dateFilter.value);
+                row.hidden = !visible;
+                if (visible) visibleCount += 1;
+            });
+            noResults.hidden = visibleCount > 0;
+        }
+
+        [search, typeFilter, statusFilter, dateFilter].forEach(function (control) {
+            control.addEventListener("input", applyFilters);
+            control.addEventListener("change", applyFilters);
+        });
+    })();
+</script>
+{% endif %}
+</body>
+</html>
